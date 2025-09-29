@@ -1,0 +1,42 @@
+require('dotenv').config();
+const express = require('express');
+const fetch = require('node-fetch'); 
+const multer = require('multer');
+const upload = multer();
+const app = express();
+
+const HF_API_TOKEN = process.env.HF_API_TOKEN; 
+const HF_MODEL = process.env.HF_MODEL || 'google/vit-base-patch16-224'; 
+
+if(!HF_API_TOKEN){
+  console.warn('No HF_API_TOKEN set — ??????? ???????? Hugging Face Inference API');
+}
+
+app.post('/api/check', upload.single('file'), async (req, res) => {
+  try {
+    if(!req.file) return res.status(400).json({ error: 'no file' });
+
+    const hfUrl = `https://api-inference.huggingface.co/models/${HF_MODEL}`;
+    const response = await fetch(hfUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${HF_API_TOKEN}`,
+      },
+      body: req.file.buffer
+    });
+
+    if(!response.ok){
+      const text = await response.text();
+      return res.status(response.status).json({ error: 'HF error', detail: text });
+    }
+
+    const result = await respons	e.json(); 
+    return res.json({ model: HF_MODEL, result });
+  } catch(err){
+    console.error(err);
+    return res.status(500).json({ error: 'server_error', message: err.message });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, ()=> console.log(`Server listening on ${PORT}`));
